@@ -61,33 +61,39 @@ class DiskSentry:
 
     def _setup_database(self) -> sqlite3.Connection:
         """Initialize SQLite database for storing disk health metrics."""
-        os.makedirs(os.path.dirname(self.config["database_path"]), exist_ok=True)
-        conn = sqlite3.connect(self.config["database_path"])
-        cursor = conn.cursor()
+        try:
+            os.makedirs(os.path.dirname(self.config["database_path"]), exist_ok=True)
+            conn = sqlite3.connect(self.config["database_path"])
+            cursor = conn.cursor()
+            
+            # Create tables if they don't exist
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS smart_data (
+                    timestamp TEXT,
+                    device TEXT,
+                    attribute TEXT,
+                    value INTEGER,
+                    threshold INTEGER,
+                    raw_value TEXT
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS disk_predictions (
+                    timestamp TEXT,
+                    device TEXT,
+                    health_score REAL,
+                    prediction_confidence REAL
+                )
+            ''')
+            
+            conn.commit()
+            self.logger.info("Database initialized successfully.")
+            return conn
+        except sqlite3.Error as e:
+            self.logger.error(f"Database initialization error: {e}")
+            raise
         
-        # Create tables if they don't exist
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS smart_data (
-                timestamp TEXT,
-                device TEXT,
-                attribute TEXT,
-                value INTEGER,
-                threshold INTEGER,
-                raw_value TEXT
-            )
-        ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS disk_predictions (
-                timestamp TEXT,
-                device TEXT,
-                health_score REAL,
-                prediction_confidence REAL
-            )
-        ''')
-        
-        conn.commit()
-        return conn
 
     def get_smart_data(self, device: str) -> List[Dict]:
         """Retrieve SMART data for a specific device using smartctl."""
