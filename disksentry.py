@@ -52,6 +52,12 @@ class DiskSentry:
             with open(config_path, 'w') as f:
                 json.dump(default_config, f, indent=4)
             return default_config
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Invalid JSON in configuration file {config_path}: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error while loading configuration: {e}")
+            raise
 
     def _setup_database(self) -> sqlite3.Connection:
         """Initialize SQLite database for storing disk health metrics."""
