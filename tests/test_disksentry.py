@@ -37,3 +37,27 @@ class TestDiskSentry(unittest.TestCase):
         ds = DiskSentry(self.test_config_path, self.mock_logger)
         with self.assertRaises(json.JSONDecodeError):
             ds._load_config(self.test_config_path)
+
+    @patch("sqlite3.connect")
+    @patch("os.makedirs")
+    def test_setup_database(self, mock_makedirs, mock_connect):
+        mock_conn = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_cursor = mock_conn.cursor.return_value
+
+        ds = DiskSentry(self.test_config_path, self.mock_logger)
+        ds.config = {"database_path": self.test_config_path}
+        conn = ds._setup_database()
+
+        mock_makedirs.assert_called_once_with(os.path.dirname(self.test_config_path), exist_ok=True)
+        mock_connect.assert_called_once_with(self.test_config_path)
+        mock_cursor.execute.assert_any_call('''CREATE TABLE IF NOT EXISTS smart_data (
+            timestamp TEXT,
+            device TEXT,
+            attribute TEXT,
+            value INTEGER,
+            threshold INTEGER,
+            raw_value TEXT
+            )''') 
+        self.assertEqual(conn, mock_conn)
+
